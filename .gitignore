@@ -6,6 +6,7 @@
 /enclave/debian/files
 /enclave/debian/libsabd-enclave*/
 /enclave/linux-sgx*/
+/enclave/bolt/
 /enclave/**/*.so
 /enclave/**/*.a
 /enclave/**/*.o

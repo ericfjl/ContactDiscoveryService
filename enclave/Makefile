@@ -1,6 +1,7 @@
 srcdir = src
 includedir = include
 libdir = lib
+patchdir = patches
 resourcedir = ../service/src/main/resources
 
 export NAME := sabd
@@ -9,6 +10,9 @@ JDK_HOME ?= $(dir $(word 1,$(wildcard /usr/lib/jvm/*/include)))
 export JDK_HOME
 
 DOCKER ?= docker
+
+LLVM_BOLT ?= bolt/build/bin/llvm-bolt
+BOLT_DIR   = bolt
 
 CFLAGS = \
 	-m64 -O2 -ggdb -march=skylake -pipe \
@@ -20,9 +24,13 @@ CFLAGS = \
 TEST_CFLAGS += $(CFLAGS) \
 	-DUNIT_TESTING -fsanitize=undefined
 
+ifdef SPECTRE_HARDEN
+ENCLAVE_NAME		:= lib$(NAME)_enclave.hardened
+else
 ENCLAVE_NAME		:= lib$(NAME)_enclave
+endif
 TARGET			:= $(ENCLAVE_NAME).unsigned.so
-UNSTRIPPED_TARGET	:= $(ENCLAVE_NAME).unstripped.so
+UNSTRIPPED_TARGET	:= lib$(NAME)_enclave.unstripped.so
 
 SIGNDATA		:= $(ENCLAVE_NAME).signdata
 MRENCLAVE		:= $(ENCLAVE_NAME).mrenclave
@@ -90,7 +98,7 @@ jni: $(SGX_LIBDIR)/lib$(SGX_URTS_LIB).so
 	$(MAKE) -C jni
 
 debuild:
-	env -u LANG LC_ALL=C debuild --no-lintian --build=binary -uc -us -j1
+	env -u LANG LC_ALL=C $(if $(SPECTRE_HARDEN),SPECTRE_HARDEN=$(SPECTRE_HARDEN)) debuild --preserve-envvar SPECTRE_HARDEN --no-lintian --build=binary -uc -us -j1
 	mv ../*.buildinfo debian/buildinfo
 	mv ../*.deb debian/
 debuild-target: all
@@ -107,7 +115,7 @@ docker: clean
 	$(DOCKER) run --rm --volume $(CURDIR):/home/signal/enclave --workdir /home/signal/enclave \
 		--user $$(id -u):$$(id -g) \
 		whispersystems/contactdiscovery-enclave:1.0 \
-		env HOME=/home/signal make SGX_MODE=$(SGX_MODE) debuild debrebuild jni
+		env HOME=/home/signal make SGX_MODE=$(SGX_MODE) $(if $(SPECTRE_HARDEN),SPECTRE_HARDEN=$(SPECTRE_HARDEN)) debuild debrebuild jni
 
 edger8r: $(includedir)/sabd_enclave.edl | $(SGX_EDGER8R)
 	 $(SGX_EDGER8R) --untrusted --untrusted-dir jni/src \
@@ -140,3 +148,25 @@ $(TEST_SABD_TARGET): $(TEST_SABD_SOURCES) $(includedir)/cmockery.h
 $(TEST_SGXSD_TARGET): CFLAGS := $(TEST_CFLAGS)
 $(TEST_SGXSD_TARGET): $(TEST_SGXSD_SOURCES) $(includedir)/cmockery.h
 	$(CC) -o $@ $(TEST_SGXSD_SOURCES) $(TEST_LDFLAGS)
+
+#
+# BOLT
+#
+
+llvm-bolt: $(LLVM_BOLT)
+$(LLVM_BOLT):
+	-rm -r $(BOLT_DIR)
+	@mkdir -p $(BOLT_DIR)
+	@( cd $(BOLT_DIR) && \
+	   wget -O - https://github.com/llvm-mirror/llvm/archive/f137ed238db11440f03083b1c88b7ffc0f4af65e.tar.gz | tar zxf - && \
+	   mv llvm-f137ed238db11440f03083b1c88b7ffc0f4af65e llvm && \
+	   cd llvm/tools && \
+	   wget -O - https://github.com/facebookincubator/BOLT/archive/471e5fc4a6734869bee50b6f2430c30d8a155e9d.tar.gz | tar zxf - && \
+	   mv BOLT-471e5fc4a6734869bee50b6f2430c30d8a155e9d llvm-bolt && \
+	   cd .. && \
+	   patch -p 1 < tools/llvm-bolt/llvm.patch )
+	patch -d $(BOLT_DIR)/llvm/tools/llvm-bolt -p 1 < $(patchdir)/llvm-bolt.lfences.patch
+	@( cd $(BOLT_DIR) && \
+	   mkdir build && cd build && \
+	   cmake -G Ninja ../llvm -DLLVM_TARGETS_TO_BUILD="X86;AArch64" -DCMAKE_BUILD_TYPE=Release && \
+	   ninja )

@@ -27,7 +27,6 @@
 #include "sgx_quote.h"
 #include "sgx_utils.h"
 #include "sgx_spinlock.h"
-#include "sgx_lfence.h"
 
 #include "bearssl_aead.h"
 #include "bearssl_hash.h"
@@ -95,7 +94,6 @@ sgxsd_server_state_desc_t g_sgxsd_enclave_server_states[SGXSD_ENCLAVE_MAX_SERVER
 static
 void sgxsd_spin_lock(sgx_spinlock_t *p_spinlock) {
     sgx_spin_lock(p_spinlock);
-    sgx_lfence();
 }
 static
 void sgxsd_spin_unlock(sgx_spinlock_t *p_spinlock) {

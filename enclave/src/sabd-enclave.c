@@ -30,7 +30,6 @@
 #include "sabd_enclave_t.h"
 
 #include "sgx_trts.h"
-#include "sgx_lfence.h"
 
 #if UNIT_TESTING
 #include <stdarg.h>
@@ -340,7 +339,6 @@ sgx_status_t sgxsd_enclave_server_handle_call(const sabd_call_args_t *p_args,
       msg.size / 8 != p_args->ab_jid_count) {
     return SGX_ERROR_INVALID_PARAMETER;
   }
-  sgx_lfence();
 
   sabd_msg_t *p_sabd_msg = malloc(sizeof(sabd_msg_t));
   if (p_sabd_msg == NULL) {
@@ -388,9 +386,6 @@ sgx_status_t sgxsd_enclave_server_terminate(const sabd_stop_args_t *p_args, sabd
       // failed to validate lookup args
       lookup_res = validate_args_res;
     } else if (in_ab_jids_result != NULL) {
-      // prevent speculative execution in case in_jids lies inside enclave
-      sgx_lfence();
-
       lookup_res = sabd_lookup_hash(p_args->in_jids, validated_in_jid_count,
                                     p_state->ab_jids, p_state->ab_jid_count,
                                     in_ab_jids_result);

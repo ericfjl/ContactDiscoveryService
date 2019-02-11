@@ -1,16 +1,18 @@
 	.file	"sabd-enclave.c"
-# GNU C11 (Debian 6.3.0-18+deb9u1) version 6.3.0 20170516 (x86_64-linux-gnu)
+# GNU C11 (Debian 6.3.0-18) version 6.3.0 20170516 (x86_64-linux-gnu)
 #	compiled by GNU C version 6.3.0 20170516, GMP version 6.1.2, MPFR version 3.1.5, MPC version 1.0.3, isl version 0.15
 # GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
 # options passed:  -I include -I include/bearssl
 # -I linux-sgx-sgx_2.1.3-g75dd558bdaff/common/inc
 # -I linux-sgx-sgx_2.1.3-g75dd558bdaff/common/inc/tlibc
+# -I linux-sgx-sgx_2.1.3-g75dd558bdaff/common/inc/tlibc
 # -imultiarch x86_64-linux-gnu -D _FORTIFY_SOURCE=2 -D _DEFAULT_SOURCE
 # src/sabd-enclave.c -m64 -march=skylake
 # -auxbase-strip src/sabd-enclave.c.s -ggdb -ggdb0 -O2 -Wdate-time -Wall
 # -Werror=all -Wextra -Wno-unused-parameter -Wno-missing-field-initializers
-# -std=c11 -fstack-protector -fvisibility=hidden -fpie -fverbose-asm
-# options enabled:  -faggressive-loop-optimizations -falign-labels
+# -std=c11 -fstack-protector -fvisibility=hidden -fvisibility=hidden -fPIC
+# -fno-jump-tables -fverbose-asm
+# options enabled:  -fPIC -faggressive-loop-optimizations -falign-labels
 # -fasynchronous-unwind-tables -fauto-inc-dec -fbranch-count-reg
 # -fcaller-saves -fchkp-check-incomplete-type -fchkp-check-read
 # -fchkp-check-write -fchkp-instrument-calls -fchkp-narrow-bounds
@@ -32,8 +34,8 @@
 # -fleading-underscore -flifetime-dse -flra-remat -flto-odr-type-merging
 # -fmath-errno -fmerge-constants -fmerge-debug-strings
 # -fmove-loop-invariants -fomit-frame-pointer -foptimize-sibling-calls
-# -foptimize-strlen -fpartial-inlining -fpeephole -fpeephole2 -fpic -fpie
-# -fplt -fprefetch-loop-arrays -free -freg-struct-return -freorder-blocks
+# -foptimize-strlen -fpartial-inlining -fpeephole -fpeephole2 -fplt
+# -fprefetch-loop-arrays -free -freg-struct-return -freorder-blocks
 # -freorder-functions -frerun-cse-after-loop
 # -fsched-critical-path-heuristic -fsched-dep-count-heuristic
 # -fsched-group-heuristic -fsched-interblock -fsched-last-insn-heuristic
@@ -641,22 +643,27 @@ sgxsd_enclave_server_init:
 sgxsd_enclave_server_handle_call:
 .LFB4851:
 	.cfi_startproc
-	pushq	%r14	#
+	pushq	%r15	#
 	.cfi_def_cfa_offset 16
-	.cfi_offset 14, -16
+	.cfi_offset 15, -16
 	movl	$5, %eax	#, <retval>
-	pushq	%r13	#
+	pushq	%r14	#
 	.cfi_def_cfa_offset 24
-	.cfi_offset 13, -24
-	pushq	%r12	#
+	.cfi_offset 14, -24
+	pushq	%r13	#
 	.cfi_def_cfa_offset 32
-	.cfi_offset 12, -32
-	pushq	%rbp	#
+	.cfi_offset 13, -32
+	pushq	%r12	#
 	.cfi_def_cfa_offset 40
-	.cfi_offset 6, -40
-	pushq	%rbx	#
+	.cfi_offset 12, -40
+	pushq	%rbp	#
 	.cfi_def_cfa_offset 48
-	.cfi_offset 3, -48
+	.cfi_offset 6, -48
+	pushq	%rbx	#
+	.cfi_def_cfa_offset 56
+	.cfi_offset 3, -56
+	subq	$8, %rsp	#,
+	.cfi_def_cfa_offset 64
 	movq	(%rcx), %rbx	# *pp_state_4(D), p_state
 	testq	%rbx, %rbx	# p_state
 	je	.L75	#,
@@ -667,62 +674,65 @@ sgxsd_enclave_server_handle_call:
 	testl	%ecx, %ecx	# _8
 	jne	.L77	#,
 .L75:
-	popq	%rbx	#
+	addq	$8, %rsp	#,
 	.cfi_remember_state
-	.cfi_def_cfa_offset 40
+	.cfi_def_cfa_offset 56
+	popq	%rbx	#
+	.cfi_def_cfa_offset 48
 	popq	%rbp	#
-	.cfi_def_cfa_offset 32
+	.cfi_def_cfa_offset 40
 	popq	%r12	#
-	.cfi_def_cfa_offset 24
+	.cfi_def_cfa_offset 32
 	popq	%r13	#
-	.cfi_def_cfa_offset 16
+	.cfi_def_cfa_offset 24
 	popq	%r14	#
+	.cfi_def_cfa_offset 16
+	popq	%r15	#
 	.cfi_def_cfa_offset 8
 	ret
 	.p2align 4,,10
 	.p2align 3
 .L77:
 	.cfi_restore_state
-	movl	12(%rbx), %r8d	# p_state_5->max_ab_jids, p_state_5->max_ab_jids
-	subl	8(%rbx), %r8d	# p_state_5->ab_jid_count, tmp115
-	cmpl	%r8d, %ecx	# tmp115, _8
+	movl	8(%rbx), %r14d	# p_state_5->ab_jid_count,
+	movl	12(%rbx), %r8d	# p_state_5->max_ab_jids, tmp114
+	subl	%r14d, %r8d	# _10, tmp114
+	cmpl	%r8d, %ecx	# tmp114, _8
 	ja	.L75	#,
 	testb	$7, %dl	#, msg
 	jne	.L75	#,
-	movl	%edx, %r8d	# msg, tmp118
-	shrl	$3, %r8d	#, tmp118
-	cmpl	%r8d, %ecx	# tmp118, _8
+	movl	%edx, %r8d	# msg, tmp117
+	shrl	$3, %r8d	#, tmp117
+	cmpl	%r8d, %ecx	# tmp117, _8
 	jne	.L75	#,
-	lfence
 	movq	%rdi, %rbp	# p_args, p_args
 	movl	$56, %edi	#,
 	movq	%rdx, %r12	# msg, msg
 	movq	%rsi, %r13	# msg, msg
 	call	malloc@PLT	#
-	movq	%rax, %r14	#, tmp119
+	movq	%rax, %r15	#, tmp118
 	movl	$3, %eax	#, <retval>
-	testq	%r14, %r14	# tmp119
+	testq	%r15, %r15	# tmp118
 	je	.L75	#,
-	movq	(%rbx), %rax	# p_state_5->msgs, _18
-	movl	$10, %ecx	#, tmp122
-	movq	%r14, %rdi	# tmp119, p_sabd_msg
-	leaq	48(%rsp), %rsi	#, tmp121
+	movq	(%rbx), %rax	# p_state_5->msgs, _17
+	movl	$10, %ecx	#, tmp121
+	movq	%r15, %rdi	# tmp118, p_sabd_msg
+	leaq	64(%rsp), %rsi	#, tmp120
 	rep movsl
-	movl	0(%rbp), %edx	# p_args_7(D)->ab_jid_count, _17
+	movl	0(%rbp), %edx	# p_args_7(D)->ab_jid_count, _16
+	leaq	64(%rbx,%r14,8), %rdi	#, tmp125
 	movq	%r13, %rsi	# msg,
-	movq	%rax, 48(%r14)	# _18, p_sabd_msg_16->prev
-	movl	8(%rbx), %eax	# p_state_5->ab_jid_count, p_state_5->ab_jid_count
-	movl	%edx, 40(%r14)	# _17, p_sabd_msg_16->ab_jid_count
+	movq	%rax, 48(%r15)	# _17, p_sabd_msg_15->prev
+	movl	%edx, 40(%r15)	# _16, p_sabd_msg_15->ab_jid_count
 	movl	%r12d, %edx	# msg, msg$size
-	movq	%r14, (%rbx)	# tmp119, p_state_5->msgs
-	leaq	64(%rbx,%rax,8), %rdi	#, tmp126
+	movq	%r15, (%rbx)	# tmp118, p_state_5->msgs
 	call	memcpy@PLT	#
-	movl	40(%r14), %eax	# p_sabd_msg_16->ab_jid_count, p_sabd_msg_16->ab_jid_count
-	addl	%eax, 8(%rbx)	# p_sabd_msg_16->ab_jid_count, p_state_5->ab_jid_count
+	movl	40(%r15), %eax	# p_sabd_msg_15->ab_jid_count, p_sabd_msg_15->ab_jid_count
+	addl	%eax, 8(%rbx)	# p_sabd_msg_15->ab_jid_count, p_state_5->ab_jid_count
 	xorl	%edx, %edx	#
 	movl	$40, %ecx	#,
 	movl	$40, %esi	#,
-	leaq	48(%rsp), %rdi	#,
+	leaq	64(%rsp), %rdi	#,
 	call	memset_s@PLT	#
 	xorl	%eax, %eax	# <retval>
 	jmp	.L75	#
@@ -763,9 +773,9 @@ sgxsd_enclave_server_terminate:
 	movq	%rdi, %rbp	# p_args, p_args
 	testq	%rdi, %rdi	# p_args
 	je	.L80	#,
-	movabsq	$2305843009213693951, %rax	#, tmp125
+	movabsq	$2305843009213693951, %rax	#, tmp124
 	movq	8(%rdi), %r12	# p_args_21(D)->in_jid_count, _22
-	cmpq	%rax, %r12	# tmp125, _22
+	cmpq	%rax, %r12	# tmp124, _22
 	jbe	.L110	#,
 .L80:
 	movl	8(%rbx), %r13d	# p_state_19(D)->ab_jid_count, ab_jid_idx
@@ -816,12 +826,11 @@ sgxsd_enclave_server_terminate:
 	movq	%rax, 40(%rsp)	# in_ab_jids_result, %sfp
 	testq	%rax, %rax	# in_ab_jids_result
 	je	.L88	#,
-	lfence
-	movl	8(%rbx), %ecx	# p_state_19(D)->ab_jid_count, p_state_19(D)->ab_jid_count
-	leaq	64(%rbx), %rdx	#, tmp128
-	movq	%r12, %rsi	# _22,
 	movq	40(%rsp), %r8	# %sfp,
 	movq	0(%rbp), %rdi	# p_args_21(D)->in_jids,
+	movl	%r13d, %ecx	# ab_jid_idx,
+	leaq	64(%rbx), %rdx	#, tmp126
+	movq	%r12, %rsi	# _22,
 	call	sabd_lookup_hash	#
 	movl	8(%rbx), %r13d	# p_state_19(D)->ab_jid_count, ab_jid_idx
 	movl	%eax, %r14d	#, lookup_res
@@ -835,7 +844,7 @@ sgxsd_enclave_server_terminate:
 	.p2align 3
 .L84:
 	movq	%r15, %rdi	# p_msg,
-	movq	48(%r15), %r12	# p_msg_101->prev, p_prev_msg
+	movq	48(%r15), %r12	# p_msg_98->prev, p_prev_msg
 	movl	$56, %ecx	#,
 	xorl	%edx, %edx	#
 	movl	$56, %esi	#,
@@ -848,28 +857,28 @@ sgxsd_enclave_server_terminate:
 .L86:
 	testl	%r14d, %r14d	# lookup_res
 	jne	.L84	#,
-	movl	40(%r15), %eax	# p_msg_101->ab_jid_count, _40
+	movl	40(%r15), %eax	# p_msg_98->ab_jid_count, _38
 	subq	$8, %rsp	#,
 	.cfi_def_cfa_offset 120
-	subl	%eax, %r13d	# _40, ab_jid_idx
+	subl	%eax, %r13d	# _38, ab_jid_idx
 	movl	%r13d, %edx	# ab_jid_idx, ab_jid_idx
 	addq	48(%rsp), %rdx	# %sfp, ab_jid_idx
 	movq	%rdx, 24(%rsp)	# ab_jid_idx, %sfp
-	vmovdqa	24(%rsp), %xmm1	# %sfp, tmp160
-	vpinsrd	$2, %eax, %xmm1, %xmm0	#, _40, tmp160, tmp131
-	vmovaps	%xmm0, 8(%rsp)	# tmp131, %sfp
-	vmovdqa	8(%rsp), %xmm2	# %sfp, tmp161
-	movq	16(%rsp), %rsi	# %sfp, tmp152
-	vmovaps	%xmm2, 24(%rsp)	# tmp161, %sfp
-	pushq	32(%r15)	# p_msg_101->from
+	vmovdqa	24(%rsp), %xmm1	# %sfp, tmp158
+	vpinsrd	$2, %eax, %xmm1, %xmm0	#, _38, tmp158, tmp129
+	vmovaps	%xmm0, 8(%rsp)	# tmp129, %sfp
+	vmovdqa	8(%rsp), %xmm2	# %sfp, tmp159
+	movq	16(%rsp), %rsi	# %sfp, tmp150
+	vmovaps	%xmm2, 24(%rsp)	# tmp159, %sfp
+	pushq	32(%r15)	# p_msg_98->from
 	.cfi_def_cfa_offset 128
-	pushq	24(%r15)	# p_msg_101->from
+	pushq	24(%r15)	# p_msg_98->from
 	.cfi_def_cfa_offset 136
-	pushq	16(%r15)	# p_msg_101->from
+	pushq	16(%r15)	# p_msg_98->from
 	.cfi_def_cfa_offset 144
-	pushq	8(%r15)	# p_msg_101->from
+	pushq	8(%r15)	# p_msg_98->from
 	.cfi_def_cfa_offset 152
-	pushq	(%r15)	# p_msg_101->from
+	pushq	(%r15)	# p_msg_98->from
 	.cfi_def_cfa_offset 160
 	movq	48(%rsp), %rdi	# %sfp,
 	call	sgxsd_enclave_server_reply@PLT	#
@@ -894,8 +903,8 @@ sgxsd_enclave_server_terminate:
 	testl	%r14d, %r14d	# lookup_res
 	jne	.L107	#,
 	cmpl	$2, %ebp	#, <retval>
-	movl	$1, %eax	#, tmp153
-	cmove	%eax, %ebp	# <retval>,, tmp153, <retval>
+	movl	$1, %eax	#, tmp151
+	cmove	%eax, %ebp	# <retval>,, tmp151, <retval>
 	jmp	.L105	#
 	.p2align 4,,10
 	.p2align 3
@@ -992,5 +1001,5 @@ sgxsd_enclave_server_terminate:
 	.long	-1
 	.long	4294967295
 	.long	-1
-	.ident	"GCC: (Debian 6.3.0-18+deb9u1) 6.3.0 20170516"
+	.ident	"GCC: (Debian 6.3.0-18) 6.3.0 20170516"
 	.section	.note.GNU-stack,"",@progbits

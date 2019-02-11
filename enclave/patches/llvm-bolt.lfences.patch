@@ -1,0 +1,265 @@
+diff --git a/src/BinaryFunction.cpp b/src/BinaryFunction.cpp
+index bc3ecd4c9b48..7cd6e92de573 100644
+--- a/src/BinaryFunction.cpp
++++ b/src/BinaryFunction.cpp
+@@ -1600,8 +1600,16 @@ bool BinaryFunction::postProcessIndirectBranches() {
+             IsR2Set = true;
+         }
+ 
+-        if (!IsR1Set || !IsR2Set)
++        if (!IsR1Set || !IsR2Set) {
++          if (opts::Verbosity >= 2) {
++            outs() << "BOLT-INFO: rejected potential PIC jump table in function "
++                   << *this << " because the jump-on registers were not defined"
++                   << " in basic block " << BB->getName() << ".\n";
++            DEBUG(dbgs() << BC.printInstructions(dbgs(), BB->begin(), BB->end(),
++                                                 BB->getOffset(), this, true));
++          }
+           return false;
++        }
+ 
+         continue;
+       }
+diff --git a/src/BinaryPassManager.cpp b/src/BinaryPassManager.cpp
+index 49e7d5bcf62c..180f99a1df25 100644
+--- a/src/BinaryPassManager.cpp
++++ b/src/BinaryPassManager.cpp
+@@ -24,6 +24,7 @@
+ #include "Passes/ReorderData.h"
+ #include "Passes/StokeInfo.h"
+ #include "Passes/RetpolineInsertion.h"
++#include "Passes/LFenceInsertion.h"
+ #include "Passes/ValidateInternalCalls.h"
+ #include "Passes/VeneerElimination.h"
+ #include "llvm/Support/Timer.h"
+@@ -462,6 +463,9 @@ void BinaryFunctionPassManager::runAllPasses(
+   Manager.registerPass(
+       llvm::make_unique<RetpolineInsertion>(PrintRetpolineInsertion));
+ 
++  Manager.registerPass(
++      llvm::make_unique<LFenceInsertion>());
++
+   // Thighten branches according to offset differences between branch and
+   // targets. No extra instructions after this pass, otherwise we may have
+   // relocations out of range and crash during linking.
+diff --git a/src/MCPlusBuilder.h b/src/MCPlusBuilder.h
+index 851fec65c53d..03221676151e 100644
+--- a/src/MCPlusBuilder.h
++++ b/src/MCPlusBuilder.h
+@@ -452,6 +452,11 @@ public:
+     return false;
+   }
+ 
++  virtual bool isMOV64rr(const MCInst &Inst) const {
++    llvm_unreachable("not implemented");
++    return false;
++  }
++
+   virtual bool isLeave(const MCInst &Inst) const {
+     llvm_unreachable("not implemented");
+     return false;
+diff --git a/src/Passes/CMakeLists.txt b/src/Passes/CMakeLists.txt
+index 2f3a3ca1b33e..c948613ceb3e 100644
+--- a/src/Passes/CMakeLists.txt
++++ b/src/Passes/CMakeLists.txt
+@@ -35,6 +35,7 @@ add_llvm_library(LLVMBOLTPasses
+   ValidateInternalCalls.cpp
+   VeneerElimination.cpp
+   RetpolineInsertion.cpp
++  LFenceInsertion.cpp
+ 
+   DEPENDS
+   intrinsics_gen
+diff --git a/src/Passes/LFenceInsertion.cpp b/src/Passes/LFenceInsertion.cpp
+new file mode 100644
+index 000000000000..20343cf1b928
+--- /dev/null
++++ b/src/Passes/LFenceInsertion.cpp
+@@ -0,0 +1,74 @@
++//===--- Passes/LFenceInsertion.cpp-------------------------------------===//
++//
++//                     The LLVM Compiler Infrastructure
++//
++// This file is distributed under the University of Illinois Open Source
++// License. See LICENSE.TXT for details.
++//
++//===----------------------------------------------------------------------===//
++//
++// This class implements a pass that inserts LFENCE instructions before each
++// conditional branch to protect against Spectre Variant 1.
++// The performance impact of this is significant!
++//===----------------------------------------------------------------------===//
++#include "LFenceInsertion.h"
++#include "RewriteInstance.h"
++#include "llvm/Support/raw_ostream.h"
++
++#define DEBUG_TYPE "bolt-lfence"
++
++using namespace llvm;
++using namespace bolt;
++namespace opts {
++
++extern cl::OptionCategory BoltCategory;
++
++llvm::cl::opt<bool>
++InsertLFences("insert-lfences",
++  cl::desc("run lfence insertion pass"),
++  cl::init(false),
++  cl::ZeroOrMore,
++  cl::cat(BoltCategory));
++
++} // namespace opts
++
++namespace llvm {
++namespace bolt {
++
++void LFenceInsertion::runOnFunctions(BinaryContext &BC,
++                                     std::map<uint64_t, BinaryFunction> &BFs,
++                                     std::set<uint64_t> &LargeFunctions) {
++
++  if (!opts::InsertLFences)
++    return;
++
++  assert(BC.isX86() &&
++         "lfence insertion not supported for target architecture");
++
++  assert(BC.HasRelocations && "lfence mode not supported in non-reloc");
++
++  auto &MIB = *BC.MIB;
++  uint32_t LFencedBranches = 0;
++  for (auto &It : BFs) {
++    auto &Function = It.second;
++    for (auto &BB : Function) {
++      for (auto It = BB.begin(); It != BB.end(); ++It) {
++        auto &Inst = *It;
++
++        if (!MIB.isConditionalBranch(Inst))
++          continue;
++
++        MCInst LFence;
++        MIB.createLfence(LFence);
++        It = BB.insertInstruction(It, std::move(LFence));
++        ++It;
++        LFencedBranches++;
++      }
++    }
++  }
++  outs() << "\nBOLT-INFO: The number of lfenced branches is : " << LFencedBranches
++         << "\n";
++}
++
++} // namespace bolt
++} // namespace llvm
+diff --git a/src/Passes/LFenceInsertion.h b/src/Passes/LFenceInsertion.h
+new file mode 100644
+index 000000000000..a9caf0cd903d
+--- /dev/null
++++ b/src/Passes/LFenceInsertion.h
+@@ -0,0 +1,38 @@
++//===--- Passes/LFenceInsertion.h ---------------------------------------===//
++//
++//                     The LLVM Compiler Infrastructure
++//
++// This file is distributed under the University of Illinois Open Source
++// License. See LICENSE.TXT for details.
++//
++//===----------------------------------------------------------------------===//
++//
++//===----------------------------------------------------------------------===//
++
++#ifndef LLVM_TOOLS_LLVM_BOLT_LFENCE_INSERTION_H
++#define LLVM_TOOLS_LLVM_BOLT_LFENCE_INSERTION_H
++
++#include "BinaryPasses.h"
++#include "BinarySection.h"
++#include <string>
++#include <unordered_map>
++
++namespace llvm {
++namespace bolt {
++
++class LFenceInsertion : public BinaryFunctionPass {
++private:
++
++public:
++  explicit LFenceInsertion() : BinaryFunctionPass(false) {}
++
++  const char *getName() const override { return "lfence-insertion"; }
++
++  void runOnFunctions(BinaryContext &BC,
++                      std::map<uint64_t, BinaryFunction> &BFs,
++                      std::set<uint64_t> &LargeFunctions) override;
++};
++} // namespace bolt
++} // namespace llvm
++
++#endif
+diff --git a/src/Target/X86/X86MCPlusBuilder.cpp b/src/Target/X86/X86MCPlusBuilder.cpp
+index b758146999a1..eae6d3a516f1 100644
+--- a/src/Target/X86/X86MCPlusBuilder.cpp
++++ b/src/Target/X86/X86MCPlusBuilder.cpp
+@@ -616,6 +616,10 @@ public:
+     return Inst.getOpcode() == X86::MOVSX64rm32;
+   }
+ 
++  bool isMOV64rr(const MCInst &Inst) const override {
++    return Inst.getOpcode() == X86::MOV64rr;
++  }
++
+   bool isLeave(const MCInst &Inst) const override {
+     return Inst.getOpcode() == X86::LEAVE ||
+            Inst.getOpcode() == X86::LEAVE64;
+@@ -2226,7 +2230,8 @@ public:
+     // Analyze PIC-style jump table code template:
+     //
+     //    lea PIC_JUMP_TABLE(%rip), {%r1|%r2}     <- MemLocInstr
+-    //    mov ({%r1|%r2}, %index, 4), {%r2|%r1}
++    //    mov {%r1|%r2}, {%r2|%r1}
++    //    mov ({%r1|%r2}, %index, 4), {%r1|%r2}
+     //    add %r2, %r1
+     //    jmp *%r1
+     //
+@@ -2266,6 +2271,12 @@ public:
+           !InstrDesc.hasDefOfPhysReg(Instr, R2, *RegInfo)) {
+         // Ignore instructions that don't affect R1, R2 registers.
+         continue;
++      } else if (isMOV64rr(Instr)) {
++        if (InstrDesc.hasDefOfPhysReg(Instr, R1, *RegInfo)) {
++          R1 = Instr.getOperand(1).getReg();
++        } else if (InstrDesc.hasDefOfPhysReg(Instr, R2, *RegInfo)) {
++          R2 = Instr.getOperand(1).getReg();
++        }
+       } else if (!MovInstr) {
+         // Expect to see MOV instruction.
+         if (!isMOVSX64rm32(Instr)) {
+@@ -2294,17 +2305,15 @@ public:
+                                       &ScaleValue, &IndexRegNum,
+                                       &DispValue, &SegRegNum))
+           break;
+-        if (BaseRegNum != R1 ||
+-            ScaleValue != 4 ||
++        if (ScaleValue != 4 ||
+             IndexRegNum == X86::NoRegister ||
+             DispValue != 0 ||
+             SegRegNum != X86::NoRegister)
+           break;
++        R2 = BaseRegNum;
+         MovInstr = &Instr;
+       } else {
+         assert(MovInstr && "MOV instruction expected to be set");
+-        if (!InstrDesc.hasDefOfPhysReg(Instr, R1, *RegInfo))
+-          continue;
+         if (!isLEA64r(Instr)) {
+           DEBUG(dbgs() << "LEA instruction expected\n");
+           break;
+@@ -2313,6 +2322,10 @@ public:
+           DEBUG(dbgs() << "LEA instruction expected to set %r1\n");
+           break;
+         }
++        if (R2 != R1) {
++          DEBUG(dbgs() << "%r2 did not converge with %r1\n");
++          break;
++        }
+ 
+         // Verify operands for LEA.
+         unsigned      BaseRegNum;

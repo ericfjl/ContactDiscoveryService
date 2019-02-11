@@ -89,19 +89,31 @@ SGX_TRTS_LIB = sgx_trts
 export SGX_URTS_LIB = sgx_urts
 endif
 
-ENCLAVE_CFLAGS = -fvisibility=hidden -fpie -I$(SGX_INCLUDEDIR)/tlibc
+ENCLAVE_CFLAGS = -fvisibility=hidden -fPIC -I$(SGX_INCLUDEDIR)/tlibc -fno-jump-tables
 
 ENCLAVE_LDFLAGS = -Wl,--no-undefined -nostdlib -nodefaultlibs -nostartfiles -L$(libdir) \
 	-Wl,--whole-archive -l$(SGX_TRTS_LIB) -Wl,--no-whole-archive \
 	-Wl,--start-group -lsgx_tstdc -lselib -Wl,--end-group \
 	-Wl,-Bstatic -Wl,-Bsymbolic -Wl,--no-allow-shlib-undefined \
-	-Wl,-pie,-eenclave_entry -Wl,--export-dynamic -Wl,--build-id=none \
-	-Wl,--defsym,__ImageBase=0
+	-Wl,-eenclave_entry -Wl,--export-dynamic -Wl,--build-id=none \
+	-Wl,--defsym,__ImageBase=0 -Wl,--emit-relocs
 
 lib%.unstripped.so: CFLAGS += $(ENCLAVE_CFLAGS)
 lib%.unstripped.so: $(includedir)/%_t.o $(libdir)/lib$(SGX_TRTS_LIB).a $(libdir)/libselib.a $(libdir)/libsgx_tstdc.a
 	$(CC) $(LDFLAGS) -o $@ $(filter %.o,$^) $(LDLIBS) \
 		$(ENCLAVE_LDFLAGS) -Wl,--version-script=lib$*.lds -Wl,-soname,lib$*.so
+
+%.hardened.unstripped.so: %.unstripped.so | $(LLVM_BOLT)
+	$(LLVM_BOLT) -trap-old-code -use-gnu-stack -update-debug-sections -update-end -v=2 \
+		-eliminate-unreachable=0 -strip-rep-ret=0 -simplify-conditional-tail-calls=0 \
+		-align-macro-fusion=none \
+		-insert-retpolines -insert-lfences \
+		-o $@ $<
+	objdump -d $@ | \
+	  egrep -B1 '^\s+[0-9a-f]+:\s+([0-9a-f][0-9a-f] )+\s+j[^m][a-z]*\s' | \
+	  egrep -v '^\s+[0-9a-f]+:\s+([0-9a-f][0-9a-f] )+\s+j[^m][a-z]*\s' | \
+	  grep -v '^--' | grep -v lfence | wc -l | grep -q '^0$$'
+
 %.unsigned.so: %.unstripped.so
 	strip --strip-all $< -o $@
 
@@ -116,6 +128,8 @@ lib%.unstripped.so: $(includedir)/%_t.o $(libdir)/lib$(SGX_TRTS_LIB).a $(libdir)
 %.debug.sig: %.debug.signdata %.debug.key
 	openssl dgst -sha256 -out $@ -sign $*.debug.key $*.debug.signdata
 
+%.hardened.config.xml: %.config.xml
+	cp $< $@
 %.debug.config.xml: %.config.xml
 	sed -e 's@<DisableDebug>1</DisableDebug>@<DisableDebug>0</DisableDebug>@' $< > $@
 %.debug.signdata: %.unsigned.so %.debug.config.xml | $(SGX_SIGN)
