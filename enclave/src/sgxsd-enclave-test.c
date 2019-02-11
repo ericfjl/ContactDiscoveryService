@@ -237,11 +237,11 @@ static void test_sgxsd_set_current_quote_node_uninitialized(void **state) {
 
 static void test_sgxsd_negotiate_request_node_uninitialized(void **state) {
   assert_int_equal(SGX_ERROR_INVALID_STATE, sgxsd_enclave_negotiate_request
-                   (p_test_request_negotiation_request, &(sgxsd_request_negotiation_response_t) {0}));
+                   (p_test_request_negotiation_request, &(sgxsd_request_negotiation_response_t) {{0}}));
 }
 static void test_sgxsd_negotiate_request_null_request(void **state) {
   assert_int_equal(SGX_ERROR_INVALID_PARAMETER, sgxsd_enclave_negotiate_request
-                   (NULL, &(sgxsd_request_negotiation_response_t) {0}));
+                   (NULL, &(sgxsd_request_negotiation_response_t) {{0}}));
 }
 static void test_sgxsd_negotiate_request_null_response(void **state) {
   assert_int_equal(SGX_ERROR_INVALID_PARAMETER, sgxsd_enclave_negotiate_request
@@ -250,7 +250,7 @@ static void test_sgxsd_negotiate_request_null_response(void **state) {
 static void test_sgxsd_negotiate_request_generate_keypair_rand_error(void **state) {
   expect_sgx_read_rand(SGX_ERROR_UNEXPECTED, NULL, sizeof((sgxsd_curve25519_private_key_t*){0}->x));
   assert_int_equal(SGX_ERROR_UNEXPECTED, sgxsd_enclave_negotiate_request
-                   (p_test_request_negotiation_request, &(sgxsd_request_negotiation_response_t) {0}));
+                   (p_test_request_negotiation_request, &(sgxsd_request_negotiation_response_t) {{0}}));
 }
 
 static void test_sgxsd_negotiate_request(uint8_t *expected_pending_request_id, sgxsd_pending_request_id_t *p_pending_request_id) {
@@ -268,7 +268,7 @@ static void test_sgxsd_negotiate_request(uint8_t *expected_pending_request_id, s
                                p_pending_request_id, sizeof(*p_pending_request_id), true, &p_expected_dst,
                                test_zero_iv, NULL, 0, &p_expected_out_mac);
   assert_int_equal(SGX_SUCCESS, sgxsd_enclave_negotiate_request
-                   (p_test_request_negotiation_request, &(sgxsd_request_negotiation_response_t) {0}));
+                   (p_test_request_negotiation_request, &(sgxsd_request_negotiation_response_t) {{0}}));
 }
 
 //

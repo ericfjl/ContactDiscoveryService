@@ -30,7 +30,6 @@
 #include "sabd_enclave_t.h"
 
 #include "sgx_trts.h"
-#include "sgx_lfence.h"
 
 #if UNIT_TESTING
 #include <stdarg.h>
@@ -118,11 +117,11 @@ sgx_status_t sabd_lookup_hash(const jid_t *in_jids, size_t in_jid_count,
   }
   _Static_assert((((hash_slot_idx_t) 1) << SABD_MAX_HASH_TABLE_ORDER) > 0, "hash_table_slot_count overflow");
   hash_slot_idx_t hash_table_slot_count = ((hash_slot_idx_t) 1) << hash_table_order;
-  _Static_assert((((hash_slot_idx_t) 1) << SABD_MAX_HASH_TABLE_ORDER) < (UINT32_MAX / chain_length), "hash_table_jid_count overflow");
+  _Static_assert((((hash_slot_idx_t) 1) << SABD_MAX_HASH_TABLE_ORDER) < (UINT32_MAX / CHAIN_JID_COUNT), "hash_table_jid_count overflow");
   hash_slot_idx_t hash_table_jid_count = hash_table_slot_count * chain_length;
 
   // allocate hash table and auxilary tables
-  _Static_assert(hash_table_slot_count < (SIZE_MAX / sizeof(jid_t)) / chain_length, "hashed_ab_jids size overflow");
+  _Static_assert((((uint64_t) 1) << (sizeof(hash_table_slot_count) * 8)) - 1 < (SIZE_MAX / sizeof(jid_t)) / CHAIN_JID_COUNT, "hashed_ab_jids size overflow");
   size_t hashed_ab_jids_size = hash_table_jid_count * sizeof(jid_t);
   jid_t *hashed_ab_jids = memalign(CACHE_LINE_SIZE, hashed_ab_jids_size);
   if (unlikely(hashed_ab_jids == NULL)) {
@@ -136,10 +135,10 @@ sgx_status_t sabd_lookup_hash(const jid_t *in_jids, size_t in_jid_count,
     free(hashed_ab_jids);
     return SGX_ERROR_OUT_OF_MEMORY;
   }
-  memset_s(in_hashed_ab_jids_result_bits, in_hashed_ab_jids_result_bits_size, 0, in_hashed_ab_jids_result_bits_size);
+  memset_s((void *) in_hashed_ab_jids_result_bits, in_hashed_ab_jids_result_bits_size, 0, in_hashed_ab_jids_result_bits_size);
 
   // write dummy values to result byte array first, so both true and false force a cache line flush
-  memset_s(in_ab_jids_result, ab_jid_count, 0xFF, ab_jid_count);
+  memset_s((void *) in_ab_jids_result, ab_jid_count, 0xFF, ab_jid_count);
 
   // fill hash table with zeroes to force a cache line flush on write below
   memset_s(hashed_ab_jids, hashed_ab_jids_size, 0, hashed_ab_jids_size);
@@ -152,7 +151,7 @@ sgx_status_t sabd_lookup_hash(const jid_t *in_jids, size_t in_jid_count,
     uint64_t hash_salt_64[2];
     bool hash_salt_rand_res = false;
     for (uint32_t hash_salt_rand_tries = 0; likely(hash_salt_rand_tries < 10); hash_salt_rand_tries++) {
-      if (likely(_rdrand64_step(&hash_salt_64[0])) && likely(_rdrand64_step(&hash_salt_64[1]))) {
+      if (likely(_rdrand64_step((unsigned long long *) &hash_salt_64[0])) && likely(_rdrand64_step((unsigned long long *) &hash_salt_64[1]))) {
         hash_salt_rand_res = true;
         break;
       }
@@ -184,7 +183,7 @@ sgx_status_t sabd_lookup_hash(const jid_t *in_jids, size_t in_jid_count,
           (((uint64_t) (((int64_t) (((uint64_t) ab_jid_hash_slot_idx) ^ ((uint64_t) hash_slot_idx))) - 1))
            >> (sizeof(hash_slot_idx) * 8)) & 1;
         // NB: re-work above expression if this assert fails
-        _Static_assert(((int64_t) (((uint64_t) ab_jid_hash_slot_idx) ^ ((uint64_t) hash_slot_idx))) >= 0, "hash_slot_matches overflow");
+        _Static_assert(((int64_t) ((((uint64_t) 1) << (sizeof(ab_jid_hash_slot_idx) * 8)) | (((uint64_t) 1) << (sizeof(hash_slot_idx) * 8)))) >= 0, "hash_slot_matches overflow");
 
         // branch-less-ly find out if ab jid is already in chain
         __m256i chain_eq =                   _mm256_cmpeq_epi64(ab_jid_block, chain_blocks[0]);
@@ -309,7 +308,7 @@ sgx_status_t sgxsd_enclave_server_init(const sabd_start_args_t *p_args, sabd_sta
     return SGX_ERROR_INVALID_PARAMETER;
   }
 
-  _Static_assert(p_args->max_ab_jids < (SIZE_MAX - sizeof(sabd_state_t)) / sizeof(jid_t), "state_size overflow");
+  _Static_assert((((uint64_t) 1) << (sizeof(p_args->max_ab_jids) * 8)) < (SIZE_MAX - sizeof(sabd_state_t)) / sizeof(jid_t), "state_size overflow");
   size_t state_size = sizeof(sabd_state_t) + sizeof(jid_t) * p_args->max_ab_jids;
   sabd_state_t *p_state = memalign(CACHE_LINE_SIZE, state_size);
   if (p_state == NULL) {
@@ -340,7 +339,6 @@ sgx_status_t sgxsd_enclave_server_handle_call(const sabd_call_args_t *p_args,
       msg.size / 8 != p_args->ab_jid_count) {
     return SGX_ERROR_INVALID_PARAMETER;
   }
-  sgx_lfence();
 
   sabd_msg_t *p_sabd_msg = malloc(sizeof(sabd_msg_t));
   if (p_sabd_msg == NULL) {
@@ -388,9 +386,6 @@ sgx_status_t sgxsd_enclave_server_terminate(const sabd_stop_args_t *p_args, sabd
       // failed to validate lookup args
       lookup_res = validate_args_res;
     } else if (in_ab_jids_result != NULL) {
-      // prevent speculative execution in case in_jids lies inside enclave
-      sgx_lfence();
-
       lookup_res = sabd_lookup_hash(p_args->in_jids, validated_in_jid_count,
                                     p_state->ab_jids, p_state->ab_jid_count,
                                     in_ab_jids_result);

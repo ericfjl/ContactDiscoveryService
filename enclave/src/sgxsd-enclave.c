@@ -27,7 +27,6 @@
 #include "sgx_quote.h"
 #include "sgx_utils.h"
 #include "sgx_spinlock.h"
-#include "sgx_lfence.h"
 
 #include "bearssl_aead.h"
 #include "bearssl_hash.h"
@@ -95,7 +94,6 @@ sgxsd_server_state_desc_t g_sgxsd_enclave_server_states[SGXSD_ENCLAVE_MAX_SERVER
 static
 void sgxsd_spin_lock(sgx_spinlock_t *p_spinlock) {
     sgx_spin_lock(p_spinlock);
-    sgx_lfence();
 }
 static
 void sgxsd_spin_unlock(sgx_spinlock_t *p_spinlock) {
@@ -279,7 +277,7 @@ void sgxsd_enclave_ra_hkdf_round(sgxsd_sha256_hash_t *prk, sgxsd_ra_hkdf_buf_t *
     if (buf->n == 1) {
         hmac_data_buf = (sgxsd_sha256_buf_t) { &buf->n, sizeof(buf->n) };
     } else {
-        _Static_assert(offsetof(sgxsd_ra_hkdf_buf_t, n) == sizeof(buf->t_n.data), "sgxsd_ra_hkdf_buf_t.n alignment");
+        _Static_assert(sizeof(sgxsd_ra_hkdf_buf_t) == sizeof(buf->t_n.data) + sizeof(buf->n), "sgxsd_ra_hkdf_buf_t.n alignment");
         hmac_data_buf = (sgxsd_sha256_buf_t) { buf->t_n.data, sizeof(buf->t_n.data) + sizeof(buf->n) };
     }
     sgxsd_enclave_hmac_sha256(&buf->t_n, 2, (sgxsd_sha256_buf_t[]) {
@@ -446,7 +444,7 @@ sgx_status_t sgxsd_enclave_remove_pending_request(const sgxsd_pending_request_id
         memset_s(p_found_pending_request, sizeof(*p_found_pending_request), 0, sizeof(*p_found_pending_request));
         res = SGX_SUCCESS;
     } else {
-        res = SGXSD_ERROR_PENDING_REQUEST_NOT_FOUND;
+        res = (sgx_status_t) SGXSD_ERROR_PENDING_REQUEST_NOT_FOUND;
     }
 
     sgxsd_spin_unlock(&g_sgxsd_enclave_pending_requests_lock);

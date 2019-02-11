@@ -8,16 +8,24 @@ export NAME := sabd
 JDK_HOME ?= $(dir $(word 1,$(wildcard /usr/lib/jvm/*/include)))
 export JDK_HOME
 
+AS = clang-7 -c
+CC = clang-7
+
 DOCKER ?= docker
 
 CFLAGS = \
 	-m64 -O2 -ggdb -march=skylake -pipe \
 	-std=c11 -D_DEFAULT_SOURCE \
 	-fstack-protector \
+	-mllvm -x86-speculative-load-hardening -mllvm -x86-speculative-load-hardening-lfence \
 	-Wall -Werror=all -Wextra -Wno-unused-parameter -Wno-missing-field-initializers \
 	-I$(includedir) -I$(includedir)/bearssl -I$(SGX_INCLUDEDIR)
 
-TEST_CFLAGS += $(CFLAGS) \
+TEST_CFLAGS = \
+	-m64 -O2 -ggdb -march=skylake -pipe \
+	-std=c11 -D_DEFAULT_SOURCE \
+	-Wall -Werror=all -Wextra -Wno-unused-parameter -Wno-missing-field-initializers \
+	-I$(includedir) -I$(includedir)/bearssl -I$(SGX_INCLUDEDIR) \
 	-DUNIT_TESTING -fsanitize=undefined
 
 ENCLAVE_NAME		:= lib$(NAME)_enclave
