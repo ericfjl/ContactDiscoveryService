@@ -1,40 +1,45 @@
 enclave:
-  spid:        # Service Provider ID
-  certificate: # Service Provider Certificate
-  key:         # Service Provider Key
-  iasHost:     # IAS Host to talk to (testing or production)
-  acceptGroupOutOfDate: # Whether to serve IAS responses with GROUP_OUT_OF_DATE instead of OK [true|false]
+  spid: 12345        # Service Provider ID
+  certificate: "/home/wtest/signal/Signal-Server/config/nginx.crt"
+# Service Provider Certificate
+  key: abcd        # Service Provider Key
+  iasHost: localhost    # IAS Host to talk to (testing or production)
+  acceptGroupOutOfDate: true # Whether to serve IAS responses with GROUP_OUT_OF_DATE instead of OK [true|false]
   instances:
-   - mrenclave: # mrenclave value 1
-     debug:     # Whether this is a debug or production enclave [true|false]
-   - mrenclave: # mrenclave value 2
-     debug:     # Whether this is a debug or production enclave [true|false]
+   - mrenclave: 1 # mrenclave value 1
+     debug: true    # Whether this is a debug or production enclave [true|false]
+  #  - mrenclave: # mrenclave value 2
+  #    debug: true    # Whether this is a debug or production enclave [true|false]
 
 signal:
-  userToken:    # head -c 16 /dev/urandom | hexdump -ve '1/1 "%.2x"'
-  serverToken:  # head -c 16 /dev/urandom | hexdump -ve '1/1 "%.2x"'
+  userToken: 06a19fc7e8e34c705fa283af938dfd07   # head -c 16 /dev/urandom | hexdump -ve '1/1 "%.2x"'
+  serverToken: cc3d9c86a0409a7aab9240bef0401806 # head -c 16 /dev/urandom | hexdump -ve '1/1 "%.2x"'
 
-redis:
-  masterName:   # Redis Sentinel master name
+redis: 
+  masterName: secret  # Redis Sentinel master name
   sentinelUrls:
-   - # Redis Sentinel host:port 1
-   - # Redis Sentinel host:port 2
+   - http://127.0.0.1:6379 # Redis Sentinel host:port 1
+  #  - # Redis Sentinel host:port 2
 
 directory:
   initialSize: 10000000
   minLoadFactor: 0.75
-  maxLoadFactor: 0.85
+  maxLoadFactor: 0.85  
+  sqs:
+    accessKey: 624364587793      # AWS SQS accessKey
+    accessSecret: secretdev  # AWS SQS accessSecret
+    queueUrl: https://sqs.ap-southeast-1.amazonaws.com      # AWS SQS queue url
 
 limits:
   contactQueries:
-    bucketSize:        # Leaky bucket size
-    leakRatePerMinute: # Leaky bucket rate per minute
+    bucketSize: 1000       # Leaky bucket size
+    leakRatePerMinute: 100 # Leaky bucket rate per minute
   remoteAttestations:
-    bucketSize:        # Leaky bucket size
-    leakRatePerMinute: # Leaky bucket rate per minute
+    bucketSize: 1000       # Leaky bucket size
+    leakRatePerMinute: 10 # Leaky bucket rate per minute
 
-metrics:
-  reporters:
-    - type:     json # wavefront metrics reporter
-      hostname:      # wavefront endpoint hostname
-      token:         # wavefront endpoint token
+# metrics:
+#   reporters:
+#     - type:     json # wavefront metrics reporter
+#       hostname:      # wavefront endpoint hostname
+#       token:         # wavefront endpoint token
