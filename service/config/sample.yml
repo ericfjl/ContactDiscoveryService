@@ -1,8 +1,8 @@
 enclave:
   spid: 12345        # Service Provider ID
-  certificate: "/home/wtest/signal/Signal-Server/config/nginx.crt"
+  certificate: TTEyMzQ1Njc4OU0xMjM0NTY3ODlNMTIzNDU2Nzg5MDE=
 # Service Provider Certificate
-  key: "/home/wtest/nginz/key/wire/mesage.key"        # Service Provider Key
+  key: TTEyMzQ1Njc4OU0xMjM0NTY3ODlNMTIzNDU2Nzg5MDE=        # Service Provider Key
   iasHost: localhost    # IAS Host to talk to (testing or production)
   acceptGroupOutOfDate: true # Whether to serve IAS responses with GROUP_OUT_OF_DATE instead of OK [true|false]
   instances:
