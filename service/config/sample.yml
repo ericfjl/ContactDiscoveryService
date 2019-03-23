@@ -1,8 +1,8 @@
 enclave:
   spid: 12345        # Service Provider ID
-  certificate: TTEyMzQ1Njc4OU0xMjM0NTY3ODlNMTIzNDU2Nzg5MDE=
+  certificate: "/home/wtest/signal/ContactDiscoveryService/service/config/mock_certificate.pem"
 # Service Provider Certificate
-  key: TTEyMzQ1Njc4OU0xMjM0NTY3ODlNMTIzNDU2Nzg5MDE=        # Service Provider Key
+  key: "/home/wtest/signal/ContactDiscoveryService/service/config/mock_private_key.pem"        # Service Provider Key
   iasHost: localhost    # IAS Host to talk to (testing or production)
   acceptGroupOutOfDate: true # Whether to serve IAS responses with GROUP_OUT_OF_DATE instead of OK [true|false]
   instances:
@@ -16,10 +16,11 @@ signal:
   serverToken: cc3d9c86a0409a7aab9240bef0401806 # head -c 16 /dev/urandom | hexdump -ve '1/1 "%.2x"'
 
 redis: 
-  masterName: secret  # Redis Sentinel master name
+  masterName: mymaster  # Redis Sentinel master name
   sentinelUrls:
-   - http://127.0.0.1:6379 # Redis Sentinel host:port 1
-  #  - # Redis Sentinel host:port 2
+   - http://127.0.0.1:26379 # Redis Sentinel host:port 1
+   - http://127.0.0.1:26380 # Redis Sentinel host:port 2
+   - http://127.0.0.1:26381 # Redis Sentinel host:port 3
 
 directory:
   initialSize: 10000000
