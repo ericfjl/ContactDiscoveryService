@@ -1,5 +1,5 @@
 enclave:
-  spid: 1234567890123450        # Service Provider ID
+  spid: "12345678901234567890123456789012"        # Service Provider ID
   certificate: "/home/wtest/signal/ContactDiscoveryService/service/config/mock_certificate.pem"
 # Service Provider Certificate
   key: "/home/wtest/signal/ContactDiscoveryService/service/config/mock_private_key.pem"        # Service Provider Key
@@ -30,6 +30,7 @@ directory:
     accessKey: 624364587793      # AWS SQS accessKey
     accessSecret: secretdev  # AWS SQS accessSecret
     queueUrl: https://sqs.ap-southeast-1.amazonaws.com      # AWS SQS queue url
+    queueRegion: ap-southeast-1
 
 limits:
   contactQueries:
