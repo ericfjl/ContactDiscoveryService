@@ -58,7 +58,7 @@ public class SgxEnclave implements Runnable {
   }
 
   public SgxEnclave(String enclavePath, boolean debug, byte[] launchToken, byte[] spid) {
-    logger.error("enclavePath=" + enclavePath + "|launchToken=" + launchToken + "|spid=" + spid);
+    logger.error("enclavePath=" + enclavePath + "|launchToken=" + launchToken + "|spid=" + spid + "length=" + spid.length);
     if (enclavePath == null || (launchToken != null && launchToken.length != 1024) || spid == null
         || spid.length != 16) {
       throw new IllegalArgumentException("Bad SgxEnclave arguments");
