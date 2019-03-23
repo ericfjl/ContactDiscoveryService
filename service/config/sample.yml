@@ -1,5 +1,5 @@
 enclave:
-  spid: 123456        # Service Provider ID
+  spid: 0123456789012345        # Service Provider ID
   certificate: "/home/wtest/signal/ContactDiscoveryService/service/config/mock_certificate.pem"
 # Service Provider Certificate
   key: "/home/wtest/signal/ContactDiscoveryService/service/config/mock_private_key.pem"        # Service Provider Key
