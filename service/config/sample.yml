@@ -18,9 +18,9 @@ signal:
 redis: 
   masterName: mymaster  # Redis Sentinel master name
   sentinelUrls:
-   - http://127.0.0.1:26379 # Redis Sentinel host:port 1
-   - http://127.0.0.1:26380 # Redis Sentinel host:port 2
-   - http://127.0.0.1:26381 # Redis Sentinel host:port 3
+   - http://localhost:26379 # Redis Sentinel host:port 1
+   - http://localhost:26380 # Redis Sentinel host:port 2
+   - http://localhost:26381 # Redis Sentinel host:port 3
 
 directory:
   initialSize: 10000000
