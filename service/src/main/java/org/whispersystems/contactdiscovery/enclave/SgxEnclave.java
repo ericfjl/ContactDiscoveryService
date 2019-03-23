@@ -38,33 +38,36 @@ public class SgxEnclave implements Runnable {
 
   private final Logger logger = LoggerFactory.getLogger(SgxEnclave.class);
 
-  private final String  enclavePath;
+  private final String enclavePath;
   private final boolean debug;
-  private final byte[]  spid;
+  private final byte[] spid;
 
-  private Thread       thread          = null;
-  private EnclaveState enclaveState    = null;
-  private byte[]       lastLaunchToken = null;
-  private Long         lastGid         = null;
-  private boolean      stopped         = false;
-  private SgxException lastError       = null;
+  private Thread thread = null;
+  private EnclaveState enclaveState = null;
+  private byte[] lastLaunchToken = null;
+  private Long lastGid = null;
+  private boolean stopped = false;
+  private SgxException lastError = null;
 
   private static class EnclaveState {
     private final long id;
+
     private EnclaveState(long id) {
-            this.id = id;
-        }
+      this.id = id;
+    }
   }
 
   public SgxEnclave(String enclavePath, boolean debug, byte[] launchToken, byte[] spid) {
-    if (enclavePath == null || (launchToken != null && launchToken.length != 1024) || spid == null || spid.length != 16) {
+    logger.debug("enclavePath=" + enclavePath + "|launchToken=" + launchToken + "|spid=" + spid);
+    if (enclavePath == null || (launchToken != null && launchToken.length != 1024) || spid == null
+        || spid.length != 16) {
       throw new IllegalArgumentException("Bad SgxEnclave arguments");
     }
 
     this.enclavePath = enclavePath;
-    this.debug       = debug;
-    lastLaunchToken  = launchToken;
-    this.spid        = spid;
+    this.debug = debug;
+    lastLaunchToken = launchToken;
+    this.spid = spid;
   }
 
   synchronized void start() throws SgxException {
@@ -115,24 +118,24 @@ public class SgxEnclave implements Runnable {
       try {
         // native will call back into runEnclave
         nativeEnclaveStart(enclavePath, debug, lastLaunchToken, PENDING_REQUESTS_TABLE_ORDER,
-                           (enclaveId, gid, launchToken) -> {
-                             synchronized(SgxEnclave.this) {
-                               EnclaveState enclaveState = new EnclaveState(enclaveId);
+            (enclaveId, gid, launchToken) -> {
+              synchronized (SgxEnclave.this) {
+                EnclaveState enclaveState = new EnclaveState(enclaveId);
 
-                               SgxEnclave.this.enclaveState    = enclaveState;
-                               SgxEnclave.this.lastLaunchToken = launchToken;
-                               SgxEnclave.this.lastGid         = gid;
-                               SgxEnclave.this.notifyAll();
+                SgxEnclave.this.enclaveState = enclaveState;
+                SgxEnclave.this.lastLaunchToken = launchToken;
+                SgxEnclave.this.lastGid = gid;
+                SgxEnclave.this.notifyAll();
 
-                               while (enclaveState == this.enclaveState) {
-                                 try {
-                                   SgxEnclave.this.wait();
-                                 } catch (InterruptedException ex) {
-                                   logger.warn("Interrupt", ex);
-                                 }
-                               }
-                             }
-                           });
+                while (enclaveState == this.enclaveState) {
+                  try {
+                    SgxEnclave.this.wait();
+                  } catch (InterruptedException ex) {
+                    logger.warn("Interrupt", ex);
+                  }
+                }
+              }
+            });
       } catch (SgxException ex) {
         stop(ex);
       }
@@ -151,24 +154,31 @@ public class SgxEnclave implements Runnable {
   private void handleSgxException(SgxException ex) {
     if (ex.getCode() <= Integer.MAX_VALUE) {
       switch ((int) ex.getCode()) {
-        case SgxException.SGX_ERROR_INVALID_PARAMETER: throw new IllegalArgumentException(ex.getName());
-        case SgxException.SGX_ERROR_INVALID_STATE:     throw new IllegalStateException(ex.getName());
-        case SgxException.SGX_ERROR_ENCLAVE_LOST:
-        case SgxException.SGX_ERROR_ENCLAVE_CRASHED:
-        case SgxException.SGX_ERROR_INVALID_ENCLAVE:
-        case SgxException.SGX_ERROR_INVALID_ENCLAVE_ID: {
-          killEnclave(ex);
-        }
+      case SgxException.SGX_ERROR_INVALID_PARAMETER:
+        throw new IllegalArgumentException(ex.getName());
+      case SgxException.SGX_ERROR_INVALID_STATE:
+        throw new IllegalStateException(ex.getName());
+      case SgxException.SGX_ERROR_ENCLAVE_LOST:
+      case SgxException.SGX_ERROR_ENCLAVE_CRASHED:
+      case SgxException.SGX_ERROR_INVALID_ENCLAVE:
+      case SgxException.SGX_ERROR_INVALID_ENCLAVE_ID: {
+        killEnclave(ex);
+      }
       }
     }
   }
+
   private Exception convertSgxException(SgxException ex) {
     if (ex.getCode() <= Integer.MAX_VALUE) {
       switch ((int) ex.getCode()) {
-        case SgxException.SGXSD_ERROR_PENDING_REQUEST_NOT_FOUND: return new NoSuchPendingRequestException();
-        case SgxException.SGX_ERROR_MAC_MISMATCH:                return new AEADBadTagException();
-        case SgxException.SGX_ERROR_INVALID_PARAMETER:           return new IllegalArgumentException(ex.getName());
-        case SgxException.SGX_ERROR_INVALID_STATE:               return new IllegalStateException(ex.getName());
+      case SgxException.SGXSD_ERROR_PENDING_REQUEST_NOT_FOUND:
+        return new NoSuchPendingRequestException();
+      case SgxException.SGX_ERROR_MAC_MISMATCH:
+        return new AEADBadTagException();
+      case SgxException.SGX_ERROR_INVALID_PARAMETER:
+        return new IllegalArgumentException(ex.getName());
+      case SgxException.SGX_ERROR_INVALID_STATE:
+        return new IllegalStateException(ex.getName());
       }
     }
     return ex;
@@ -181,7 +191,8 @@ public class SgxEnclave implements Runnable {
     return lastGid;
   }
 
-  public static Set<SgxNeedsUpdateFlag> reportPlatformAttestationStatus(byte[] platformInfoBlob, boolean attestationSuccessful) throws SgxException {
+  public static Set<SgxNeedsUpdateFlag> reportPlatformAttestationStatus(byte[] platformInfoBlob,
+      boolean attestationSuccessful) throws SgxException {
     int updateFlags = nativeReportPlatformAttestationStatus(platformInfoBlob, attestationSuccessful);
     EnumSet<SgxNeedsUpdateFlag> updateFlagSet = EnumSet.noneOf(SgxNeedsUpdateFlag.class);
     if ((updateFlags & (1 << 0)) != 0) {
@@ -229,18 +240,18 @@ public class SgxEnclave implements Runnable {
 
   public class SgxsdBatch {
 
-    private final long                            stateHandle;
-    private final int                             maxJidCount;
+    private final long stateHandle;
+    private final int maxJidCount;
     private final CompletableFuture<SgxsdMessage> batchFuture;
-    private       int                             jidCount;
-    private       boolean                         processed;
+    private int jidCount;
+    private boolean processed;
 
     private SgxsdBatch(long stateHandle, int maxJidCount) throws SgxException {
       this.stateHandle = stateHandle;
       this.maxJidCount = maxJidCount;
       this.batchFuture = new CompletableFuture<>();
-      this.jidCount    = 0;
-      this.processed   = false;
+      this.jidCount = 0;
+      this.processed = false;
 
       try {
         nativeServerStart(getEnclaveState().id, this.stateHandle, this.maxJidCount);
@@ -259,15 +270,14 @@ public class SgxEnclave implements Runnable {
         throw new IllegalArgumentException("batch_full");
       }
 
-      final CompletableFuture<SgxsdMessage> future        = new CompletableFuture<>();
-      final byte[]                          requestTicket = request.getTicket();
+      final CompletableFuture<SgxsdMessage> future = new CompletableFuture<>();
+      final byte[] requestTicket = request.getTicket();
 
       try {
-        nativeServerCall(getEnclaveState().id, stateHandle, requestJidCount,
-                         request.getData(), request.getIv(), request.getMac(), request.getTicket(),
-                         (replyData, replyIv, replyMac) -> {
-                           future.complete(new SgxsdMessage(replyData, replyIv, replyMac, requestTicket));
-                         });
+        nativeServerCall(getEnclaveState().id, stateHandle, requestJidCount, request.getData(), request.getIv(),
+            request.getMac(), request.getTicket(), (replyData, replyIv, replyMac) -> {
+              future.complete(new SgxsdMessage(replyData, replyIv, replyMac, requestTicket));
+            });
       } catch (SgxException ex) {
         future.completeExceptionally(convertSgxException(ex));
         handleSgxException(ex);
@@ -292,7 +302,8 @@ public class SgxEnclave implements Runnable {
         throw ex;
       }
 
-      // trigger an exception for any messages that didn't get a reply (shouldn't happen unless enclave is buggy)
+      // trigger an exception for any messages that didn't get a reply (shouldn't
+      // happen unless enclave is buggy)
       batchFuture.completeExceptionally(new SgxException("reply_missing"));
     }
   }
@@ -307,14 +318,24 @@ public class SgxEnclave implements Runnable {
     void receiveServerReply(byte[] data, byte[] iv, byte[] mac);
   }
 
-  private static native void nativeEnclaveStart(String enclavePath, boolean debug, byte[] launchToken, byte pendingRequestsTableOrder, EnclaveStartCallback callback) throws SgxException;
+  private static native void nativeEnclaveStart(String enclavePath, boolean debug, byte[] launchToken,
+      byte pendingRequestsTableOrder, EnclaveStartCallback callback) throws SgxException;
 
   private static native byte[] nativeGetNextQuote(long enclaveId, byte[] spid, byte[] sig_rl) throws SgxException;
+
   private static native void nativeSetCurrentQuote(long enclaveId) throws SgxException;
-  private static native SgxRequestNegotiationResponse nativeNegotiateRequest(long enclaveId, byte[] client_pubkey_le) throws SgxException;
+
+  private static native SgxRequestNegotiationResponse nativeNegotiateRequest(long enclaveId, byte[] client_pubkey_le)
+      throws SgxException;
 
   private static native void nativeServerStart(long enclaveId, long stateHandle, int maxAbJids) throws SgxException;
-  private static native void nativeServerCall(long enclaveId, long stateHandle, int abJidCount, byte[] msg_data, byte[] msg_iv, byte[] msg_mac, byte[] msg_ticket, NativeServerReplyCallback callback) throws SgxException;
-  private static native void nativeServerStop(long enclaveId, long stateHandle, ByteBuffer inJidsBuf, long inJidCount) throws SgxException;
-  private static native int nativeReportPlatformAttestationStatus(byte[] platformInfoBlob, boolean attestationSuccessful);
+
+  private static native void nativeServerCall(long enclaveId, long stateHandle, int abJidCount, byte[] msg_data,
+      byte[] msg_iv, byte[] msg_mac, byte[] msg_ticket, NativeServerReplyCallback callback) throws SgxException;
+
+  private static native void nativeServerStop(long enclaveId, long stateHandle, ByteBuffer inJidsBuf, long inJidCount)
+      throws SgxException;
+
+  private static native int nativeReportPlatformAttestationStatus(byte[] platformInfoBlob,
+      boolean attestationSuccessful);
 }
