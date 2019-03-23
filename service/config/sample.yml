@@ -1,5 +1,5 @@
 enclave:
-  spid: 12345        # Service Provider ID
+  spid: 123456        # Service Provider ID
   certificate: "/home/wtest/signal/ContactDiscoveryService/service/config/mock_certificate.pem"
 # Service Provider Certificate
   key: "/home/wtest/signal/ContactDiscoveryService/service/config/mock_private_key.pem"        # Service Provider Key
@@ -18,9 +18,9 @@ signal:
 redis: 
   masterName: mymaster  # Redis Sentinel master name
   sentinelUrls:
-   - http://localhost:26379 # Redis Sentinel host:port 1
-   - http://localhost:26380 # Redis Sentinel host:port 2
-   - http://localhost:26381 # Redis Sentinel host:port 3
+   - localhost:26379 # Redis Sentinel host:port 1
+   - localhost:26380 # Redis Sentinel host:port 2
+   - localhost:26381 # Redis Sentinel host:port 3
 
 directory:
   initialSize: 10000000
