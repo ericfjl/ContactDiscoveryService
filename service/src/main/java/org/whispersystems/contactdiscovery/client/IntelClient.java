@@ -197,9 +197,9 @@ public class IntelClient {
   private static byte[] initializeKeyStore(String pemCertificate, String pemKey)
       throws IOException, KeyStoreException, CertificateException
   {
-    PEMParser             certificateReader = new PEMParser(new InputStreamReader(new ByteArrayInputStream(pemCertificate.getBytes())));
-    // final Reader filereader = new FileReader(pemCertificate);
-    // final PEMParser certificateReader = new PEMParser(filereader);
+    // PEMParser             certificateReader = new PEMParser(new InputStreamReader(new ByteArrayInputStream(pemCertificate.getBytes())));
+    final Reader filereader = new FileReader(pemCertificate);
+    final PEMParser certificateReader = new PEMParser(filereader);
     X509CertificateHolder certificateHolder = (X509CertificateHolder) certificateReader.readObject();
     if (certificateHolder == null) {
       throw new CertificateException("couldn't read pem certificate");
@@ -208,9 +208,9 @@ public class IntelClient {
     X509Certificate       certificate       = new JcaX509CertificateConverter().getCertificate(certificateHolder);
     Certificate[]         certificateChain  = {certificate};
 
-    PEMParser  keyReader  = new PEMParser(new InputStreamReader(new ByteArrayInputStream(pemKey.getBytes())));
-    // final Reader frKey = new FileReader(pemKey);
-    // PEMParser  keyReader  = new PEMParser(frKey);
+    // PEMParser  keyReader  = new PEMParser(new InputStreamReader(new ByteArrayInputStream(pemKey.getBytes())));
+    final Reader frKey = new FileReader(pemKey);
+    PEMParser  keyReader  = new PEMParser(frKey);
     PEMKeyPair pemKeyPair = (PEMKeyPair) keyReader.readObject();
     if (pemKeyPair == null) {
       throw new KeyStoreException("couldn't read pem private key");
