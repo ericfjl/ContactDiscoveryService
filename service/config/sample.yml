@@ -1,10 +1,10 @@
 enclave:
-  spid: "12345678901234567890123456789012"        # Service Provider ID
-  certificate: "/home/wtest/signal/ContactDiscoveryService/service/config/mock_certificate.pem"
+  spid: "00000000000000000000000000000000"        # Service Provider ID
+  certificate: "/home/wire/signal/ContactDiscoveryService/service/config/mock_certificate.pem"
 # Service Provider Certificate
-  key: "/home/wtest/signal/ContactDiscoveryService/service/config/mock_private_key.pem"        # Service Provider Key
-  iasHost: localhost    # IAS Host to talk to (testing or production)
-  acceptGroupOutOfDate: true # Whether to serve IAS responses with GROUP_OUT_OF_DATE instead of OK [true|false]
+  key: "/home/wire/signal/ContactDiscoveryService/service/config/Enclave_private.pem"        # Service Provider Key
+  iasHost: http://localhost:8081    # IAS Host to talk to (testing or production)
+  acceptGroupOutOfDate: false # Whether to serve IAS responses with GROUP_OUT_OF_DATE instead of OK [true|false]
   instances:
    - mrenclave: 1 # mrenclave value 1
      debug: true    # Whether this is a debug or production enclave [true|false]
