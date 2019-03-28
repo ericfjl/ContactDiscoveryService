@@ -27,8 +27,8 @@ directory:
   minLoadFactor: 0.75
   maxLoadFactor: 0.85  
   sqs:
-    accessKey: 624364587793      # AWS SQS accessKey
-    accessSecret: secretdev  # AWS SQS accessSecret
+    accessKey: 624364586693      # AWS SQS accessKey
+    accessSecret: secretsignaldev  # AWS SQS accessSecret
     queueUrl: https://sqs.ap-southeast-1.amazonaws.com      # AWS SQS queue url
     queueRegion: ap-southeast-1
 
