@@ -64,6 +64,7 @@ from github.
 - GNU Make
 - gcc-6
 - [Intel SGX SDK v2.1.3 SDK](https://github.com/intel/linux-sgx/tree/sgx_2.1.3) (or its build dependencies)
+- [Intel nd-to-End Example](https://software.intel.com/en-us/articles/code-sample-intel-software-guard-extensions-remote-attestation-end-to-end-example)
 
 `````
 $ make -C <repository_root>/enclave all install
@@ -87,6 +88,44 @@ production, the generated libsabd-enclave.signdata file must be signed using a s
 whitelisted by Intel, which can then be saved as libsabd-enclave.sig with public key at
 libsabd-enclave.pub, and signed using `make signed install`.
 
+## Prerequisites
+
+### Check the SGX is working and and enable SGX driver
+- [check supports Intel SGX](https://github.com/ayeks/SGX-hardware)
+- [enable sgx-driver by c++ coding](https://github.com/ericfjl/signal-test.git)
+
+### Redis Sentinel
+- [Redis Sentinel — High Availability: Everything you need to know from DEV to PROD: Complete Guide](https://medium.com/@amila922/redis-sentinel-high-availability-everything-you-need-to-know-from-dev-to-prod-complete-guide-deb198e70ea6
+)
+
+
+`````
+$ sudo apt-get update
+$ sudo apt-get install build-essential tcl
+$ sudo apt-get install libjemalloc-dev  (Optional)
+$ curl -O http://download.redis.io/redis-stable.tar.gz
+$ tar xzvf redis-stable.tar.gz
+$ cd redis-stable
+$ make
+$ make test
+$ sudo make install
+$ cp && edit redis.conf + sentinel.conf
+`````
+file|master|slave1|slave2
+----|:----:|:-----:|:------:
+redis.conf|6379|6380|6381
+sentinel.conf|26379|26380|26381
+
+### running the redis && sentinel
+`````
+$ sudo ./src/redis-server redis-master.conf &
+$ sudo ./src/redis-server redis-slave1.conf &
+$ sudo ./src/redis-server redis-slave2.conf &
+$ sudo ./src/redis-server sentinel-master.conf --sentinel &
+$ sudo ./src/redis-server sentinel-slave1.conf --sentinel &
+$ sudo ./src/redis-server sentinel-slave2.conf --sentinel &
+`````
+
 ## Building the service
 
 `````
@@ -104,3 +143,44 @@ $ cd <repository_root>
 $ java -jar service/target/contactdiscovery-<version>.jar server service/config/yourconfig.yml
 `````
 
+## fix [ContactDiscoveryService](https://github.com/signalapp/ContactDiscoveryService) 's bugs 
+### fix bug(`couldn’t read pen certificate`) in `org.whispersystems.contactdiscovery.client.IntelClient`
+`````
+  private static byte[] initializeKeyStore(String pemCertificate, String pemKey)
+      throws IOException, KeyStoreException, CertificateException
+  {
+    // PEMParser             certificateReader = new PEMParser(new InputStreamReader(new ByteArrayInputStream(pemCertificate.getBytes())));
+    final Reader filereader = new FileReader(pemCertificate);
+    final PEMParser certificateReader = new PEMParser(filereader);
+    X509CertificateHolder certificateHolder = (X509CertificateHolder) certificateReader.readObject();
+    if (certificateHolder == null) {
+      throw new CertificateException("couldn't read pem certificate");
+    }
+
+    X509Certificate       certificate       = new JcaX509CertificateConverter().getCertificate(certificateHolder);
+    Certificate[]         certificateChain  = {certificate};
+
+    // PEMParser  keyReader  = new PEMParser(new InputStreamReader(new ByteArrayInputStream(pemKey.getBytes())));
+    final Reader frKey = new FileReader(pemKey);
+    PEMParser  keyReader  = new PEMParser(frKey);
+    PEMKeyPair pemKeyPair = (PEMKeyPair) keyReader.readObject();
+    if (pemKeyPair == null) {
+      throw new KeyStoreException("couldn't read pem private key");
+    }
+`````
+### fix build error `Failure to find org.whispersystems:signal-service-java` version `2.7.8` to `2.12.8` in client.pom.xml [signal-service-java versioin](https://mvnrepository.com/artifact/com.github.turasa/signal-service-java)
+`````
+        <dependency>
+            <groupId>org.whispersystems</groupId>
+            <artifactId>signal-service-java</artifactId>
+            <version>2.12.8</version>
+        </dependency>
+`````
+### fix build error `Failure to find org.whispersystems:dropwizard-simpleauth` version `0.4.1` to `0.4.0` in service.pom.xml [issues : Not available in maven repository](https://github.com/signalapp/dropwizard-simpleauth/issues/4)
+`````
+        <dependency>
+            <groupId>org.whispersystems</groupId>
+            <artifactId>dropwizard-simpleauth</artifactId>
+            <version>0.4.0</version>
+        </dependency>
+`````
