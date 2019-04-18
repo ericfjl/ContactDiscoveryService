@@ -64,7 +64,7 @@ from github.
 - GNU Make
 - gcc-6
 - [Intel SGX SDK v2.1.3 SDK](https://github.com/intel/linux-sgx/tree/sgx_2.1.3) (or its build dependencies)
-- [Intel nd-to-End Example](https://software.intel.com/en-us/articles/code-sample-intel-software-guard-extensions-remote-attestation-end-to-end-example)
+- [Intel End-to-End Example](https://software.intel.com/en-us/articles/code-sample-intel-software-guard-extensions-remote-attestation-end-to-end-example)
 
 `````
 $ make -C <repository_root>/enclave all install
@@ -124,6 +124,9 @@ $ sudo ./src/redis-server redis-slave2.conf &
 $ sudo ./src/redis-server sentinel-master.conf --sentinel &
 $ sudo ./src/redis-server sentinel-slave1.conf --sentinel &
 $ sudo ./src/redis-server sentinel-slave2.conf --sentinel &
+
+  notice:must input sudo password, then do the command(sudo ./src/redis-server sentinel-master.conf --sentinel &)
+
 `````
 
 ## Building the service
