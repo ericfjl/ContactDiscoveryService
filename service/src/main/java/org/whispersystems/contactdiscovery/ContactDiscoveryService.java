@@ -105,32 +105,29 @@ public class ContactDiscoveryService extends Application<ContactDiscoveryConfigu
     UserAuthenticator          userAuthenticator          = new UserAuthenticator(configuration.getSignalServiceConfiguration().getUserAuthenticationToken());
     SignalServiceAuthenticator signalServiceAuthenticator = new SignalServiceAuthenticator(configuration.getSignalServiceConfiguration().getServerAuthenticationToken());
 
-    IntelClient intelClient = new IntelClient(configuration.getEnclaveConfiguration().getIasHost(),
-                                              configuration.getEnclaveConfiguration().getCertificate(),
-                                              configuration.getEnclaveConfiguration().getKey(),
-                                              configuration.getEnclaveConfiguration().getAcceptGroupOutOfDate());
-
+    // IntelClient intelClient = new IntelClient(configuration.getEnclaveConfiguration().getIasHost(),
+    //                                           configuration.getEnclaveConfiguration().getCertificate(),
+    //                                           configuration.getEnclaveConfiguration().getKey(),
+    //                                           configuration.getEnclaveConfiguration().getAcceptGroupOutOfDate());
     RedisClientFactory       cacheClientFactory       = new RedisClientFactory(configuration.getRedisConfiguration());
     SgxEnclaveManager        sgxEnclaveManager        = new SgxEnclaveManager(configuration.getEnclaveConfiguration());
-    SgxRevocationListManager sgxRevocationListManager = new SgxRevocationListManager(sgxEnclaveManager, intelClient);
-    SgxHandshakeManager      sgxHandshakeManager      = new SgxHandshakeManager(sgxEnclaveManager, sgxRevocationListManager, intelClient);
+    // SgxRevocationListManager sgxRevocationListManager = new SgxRevocationListManager(sgxEnclaveManager, intelClient);
+    // SgxHandshakeManager      sgxHandshakeManager      = new SgxHandshakeManager(sgxEnclaveManager, sgxRevocationListManager, intelClient);
     DirectoryCache           directoryCache           = new DirectoryCache();
     DirectoryHashSetFactory  directoryHashSetFactory  = new DirectoryHashSetFactory(configuration.getDirectoryConfiguration().getInitialSize(), configuration.getDirectoryConfiguration().getMinLoadFactor(), configuration.getDirectoryConfiguration().getMaxLoadFactor());
     DirectoryManager         directoryManager         = new DirectoryManager(cacheClientFactory, directoryCache, directoryHashSetFactory);
     RequestManager           requestManager           = new RequestManager(directoryManager, sgxEnclaveManager, configuration.getEnclaveConfiguration().getTargetBatchSize());
     DirectoryQueue           directoryQueue           = new DirectoryQueue(configuration.getDirectoryConfiguration().getSqsConfiguration());
     DirectoryQueueManager    directoryQueueManager    = new DirectoryQueueManager(directoryQueue, directoryManager);
-
     RateLimiter discoveryRateLimiter   = new RateLimiter(cacheClientFactory.getRedisClientPool(), "contactDiscovery", configuration.getLimitsConfiguration().getContactQueries().getBucketSize(), configuration.getLimitsConfiguration().getContactQueries().getLeakRatePerMinute()         );
-    RateLimiter attestationRateLimiter = new RateLimiter(cacheClientFactory.getRedisClientPool(), "remoteAttestation", configuration.getLimitsConfiguration().getRemoteAttestations().getBucketSize(), configuration.getLimitsConfiguration().getRemoteAttestations().getLeakRatePerMinute());
-
-    RemoteAttestationResource   remoteAttestationResource   = new RemoteAttestationResource(sgxHandshakeManager, attestationRateLimiter);
+    // RateLimiter attestationRateLimiter = new RateLimiter(cacheClientFactory.getRedisClientPool(), "remoteAttestation", configuration.getLimitsConfiguration().getRemoteAttestations().getBucketSize(), configuration.getLimitsConfiguration().getRemoteAttestations().getLeakRatePerMinute());
+    // RemoteAttestationResource   remoteAttestationResource   = new RemoteAttestationResource(sgxHandshakeManager, attestationRateLimiter);
     ContactDiscoveryResource    contactDiscoveryResource    = new ContactDiscoveryResource(discoveryRateLimiter, requestManager);
     DirectoryManagementResource directoryManagementResource = new DirectoryManagementResource(directoryManager);
 
     environment.lifecycle().manage(sgxEnclaveManager);
-    environment.lifecycle().manage(sgxRevocationListManager);
-    environment.lifecycle().manage(sgxHandshakeManager);
+    // environment.lifecycle().manage(sgxRevocationListManager);
+    // environment.lifecycle().manage(sgxHandshakeManager);
     environment.lifecycle().manage(requestManager);
     environment.lifecycle().manage(directoryManager);
     environment.lifecycle().manage(directoryQueueManager);
@@ -145,7 +142,7 @@ public class ContactDiscoveryService extends Application<ContactDiscoveryConfigu
                                                              .buildAuthFilter()));
     environment.jersey().register(new AuthValueFactoryProvider.Binder());
 
-    environment.jersey().register(remoteAttestationResource);
+    // environment.jersey().register(remoteAttestationResource);
     environment.jersey().register(contactDiscoveryResource);
     environment.jersey().register(directoryManagementResource);
 
@@ -157,7 +154,6 @@ public class ContactDiscoveryService extends Application<ContactDiscoveryConfigu
     environment.jersey().register(new AEADBadTagExceptionMapper());
     environment.jersey().register(new InvalidAddressExceptionMapper());
     environment.jersey().register(new DirectoryUnavailableExceptionMapper());
-
     environment.metrics().register(name(CpuUsageGauge.class, "cpu"), new CpuUsageGauge());
     environment.metrics().register(name(FreeMemoryGauge.class, "free_memory"), new FreeMemoryGauge());
     environment.metrics().register(name(NetworkSentGauge.class, "bytes_sent"), new NetworkSentGauge());
