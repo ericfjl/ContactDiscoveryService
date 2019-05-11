@@ -118,12 +118,14 @@ sentinel.conf|26379|26380|26381
 
 ### running the redis && sentinel
 `````
-$ sudo ./src/redis-server redis-master.conf &
-$ sudo ./src/redis-server redis-slave1.conf &
-$ sudo ./src/redis-server redis-slave2.conf &
-$ sudo ./src/redis-server sentinel-master.conf --sentinel &
-$ sudo ./src/redis-server sentinel-slave1.conf --sentinel &
-$ sudo ./src/redis-server sentinel-slave2.conf --sentinel &
+$ sudo ./src/redis-server config/redis-master.conf &
+$ sudo ./src/redis-server config/redis-slave1.conf &
+$ sudo ./src/redis-server config/redis-slave2.conf &
+$ sudo ./src/redis-server config/sentinel-master.conf --sentinel &
+$ sudo ./src/redis-server config/sentinel-slave1.conf --sentinel &
+$ sudo ./src/redis-server config/sentinel-slave2.conf --sentinel &
+
+$ sudo ./src/redis-server config/redis-master.conf &;sudo ./src/redis-server config/redis-slave1.conf &;sudo ./src/redis-server config/redis-slave2.conf &;sudo ./src/redis-server config/sentinel-master.conf --sentinel &;sudo ./src/redis-server config/sentinel-slave1.conf --sentinel &;sudo ./src/redis-server config/sentinel-slave2.conf --sentinel &
 
   notice:must input sudo password, then do the command(sudo ./src/redis-server sentinel-master.conf --sentinel &)
 
