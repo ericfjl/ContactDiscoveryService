@@ -87,6 +87,7 @@ public class IntelClient {
                                          .request()
                                          .get(String.class);
 
+    logger.info("encodedRevocationList=" + encodedRevocationList);
     if (encodedRevocationList != null && encodedRevocationList.trim().length() != 0) {
       return Base64.decodeBase64(encodedRevocationList);
     } else {
@@ -96,6 +97,7 @@ public class IntelClient {
 
   public QuoteSignatureResponse getQuoteSignature(byte[] quote) throws QuoteVerificationException, StaleRevocationListException {
     try {
+      logger.info("quote=" + quote);
       Response response = client.target(host)
                                 .path("/attestation/sgx/v3/report")
                                 .request(MediaType.APPLICATION_JSON)
@@ -105,6 +107,7 @@ public class IntelClient {
       String signature          = response.getHeaderString("X-IASReport-Signature");
       String certificate        = response.getHeaderString("X-IASReport-Signing-Certificate");
 
+      logger.info("Status=" + response.getStatus());
       if (response.getStatus() != 200) {
         throw new QuoteVerificationException("Non-successful quote verification response: " +
                                              response.getStatus() + " " + response.getStatusInfo().getReasonPhrase());

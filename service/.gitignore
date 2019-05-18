@@ -5,4 +5,11 @@ lib/*.jar
 *.iml
 target
 config/local.yml
+config/cds.yml
+.settings/
+.project
+.classpath
+.sts4-cache/
+src/main/resources/logback.xml
+src/main/resources/.DS_Store
 dependency-reduced-pom.xml
