@@ -28,8 +28,9 @@ target
 .project
 .settings
 .vscode/
-/service/config
 /client/
 /logs
 /service/src/main/resources/enclave/1.so
+/service/config/client.crt
+/service/config/client.key
 start.sh
