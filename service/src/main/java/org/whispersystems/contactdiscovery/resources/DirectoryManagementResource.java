@@ -85,7 +85,8 @@ public class DirectoryManagementResource {
   @Consumes(MediaType.APPLICATION_JSON)
   @Produces(MediaType.APPLICATION_JSON)
   @Path("/reconcile")
-  public DirectoryReconciliationResponse reconcile(@Auth SignalService signalService,
+  public DirectoryReconciliationResponse reconcile(
+                                                  //  @Auth SignalService signalService,
                                                    @Valid DirectoryReconciliationRequest request)
       throws InvalidAddressException, DirectoryUnavailableException
   {

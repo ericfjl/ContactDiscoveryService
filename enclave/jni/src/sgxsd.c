@@ -131,7 +131,8 @@ sgxsd_status_t sgxsd_get_next_quote(sgx_enclave_id_t enclave_id, sgx_spid_t spid
       if (get_next_report_ecall_res == SGX_SUCCESS) {
           if (get_next_report_res == SGX_SUCCESS) {
               sgx_status_t get_quote_res =
-                  sgx_get_quote(&report, SGX_UNLINKABLE_SIGNATURE, &spid,
+                //   sgx_get_quote(&report, SGX_UNLINKABLE_SIGNATURE, &spid,
+                  sgx_get_quote(&report, SGX_LINKABLE_SIGNATURE, &spid,
                                 NULL /* p_nonce */,
                                 p_sig_rl, sig_rl_size,
                                 NULL /* p_qe_report */,
