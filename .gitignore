@@ -34,3 +34,4 @@ target
 /service/config/client.crt
 /service/config/client.key
 start.sh
+dependency-reduced-pom.xml
